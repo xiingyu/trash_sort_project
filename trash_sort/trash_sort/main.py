@@ -29,22 +29,22 @@ class TrashSort(Node):
         ##################################
         
         #### algorithm parameter ####
-        self.general_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.7)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.85)]]
-        self.plastic_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.5)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.65)]]
-        self.glass_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.3)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.45)]]
+        self.general_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.7)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.95)]]
+        self.plastic_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.4)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.65)]]
+        self.glass_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.1)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.35)]]
         
         # self.postbox_ROI = [[int(self.img_size_x * 0.4), int(self.img_size_y * 0.65)],[int(self.img_size_x * 0.5), int(self.img_size_y * 0.75)]]## xy xy
         
         ##################################
         
-        self.cap0 = cv2.VideoCapture('/dev/video4')  #cam0
+        self.cap0 = cv2.VideoCapture('/dev/video0')  #cam0
         self.cvbrid = CvBridge()
         
         self.cap0.set(cv2.CAP_PROP_FRAME_WIDTH, self.img_size_x)
         self.cap0.set(cv2.CAP_PROP_FRAME_HEIGHT, self.img_size_y)
         self.cap0.set(cv2.CAP_PROP_FPS, self.frame_rate)
         
-        # self.image_cap_timer = self.create_timer(1/self.frame_rate, self.img_cap)
+        self.image_cap_timer = self.create_timer(1/self.frame_rate, self.img_cap)
         self.img_timer = self.create_timer(1/self.frame_rate, self.image_callback)
         
         self.color_img = np.zeros((self.img_size_y, self.img_size_x, 3), dtype=np.uint8)
@@ -65,39 +65,35 @@ class TrashSort(Node):
         
     def image_callback(self):
         
-        ret0, frame = self.cap0.read()
-        self.color_img =frame
+        result = self.model.predict(self.color_img, conf = 0.5, verbose=False)
         
-        if not (ret0) :
-            if not ret0 :
-                print(f'cam0 is cannot connetion')
-        else :
-            cv2.rectangle(self.color_img, (int(self.general_waste_ROI[0][0]),int(self.general_waste_ROI[0][1])), ((int(self.general_waste_ROI[1][0]), int(self.general_waste_ROI[1][1]))), (255,0,0),2)
-            cv2.rectangle(self.color_img, (int(self.plastic_waste_ROI[0][0]),int(self.plastic_waste_ROI[0][1])), ((int(self.plastic_waste_ROI[1][0]), int(self.plastic_waste_ROI[1][1]))), (0,255,0),2)
-            cv2.rectangle(self.color_img, (int(self.glass_waste_ROI[0][0]),int(self.glass_waste_ROI[0][1])), ((int(self.glass_waste_ROI[1][0]), int(self.glass_waste_ROI[1][1]))), (0,0,255),2)
+        cv2.rectangle(self.color_img, (int(self.general_waste_ROI[0][0]),int(self.general_waste_ROI[0][1])), ((int(self.general_waste_ROI[1][0]), int(self.general_waste_ROI[1][1]))), (255,0,0),2)
+        cv2.rectangle(self.color_img, (int(self.plastic_waste_ROI[0][0]),int(self.plastic_waste_ROI[0][1])), ((int(self.plastic_waste_ROI[1][0]), int(self.plastic_waste_ROI[1][1]))), (0,255,0),2)
+        cv2.rectangle(self.color_img, (int(self.glass_waste_ROI[0][0]),int(self.glass_waste_ROI[0][1])), ((int(self.glass_waste_ROI[1][0]), int(self.glass_waste_ROI[1][1]))), (0,0,255),2)
 
-            
-            # result = self.model.predict(frame, conf = 0.5, verbose=False)
-            
-            # if len(result[0].boxes.cls) :
-            #     for box in result[0].boxes :
-            #         label = box.cls
-            #         confidence = box.conf.item()
-            #         object_xyxy = np.array(box.xyxy.detach().numpy().tolist()[0], dtype='int')
-            #         color = [255,255,255]
-            #         if label == 0 :
-            #             color =[0,255,0]
-            #             cv2.putText(frame, f'Korea ARMY  {(confidence*100):.2f}%', (object_xyxy[0], object_xyxy[1] - 20),cv2.FONT_ITALIC, 1, (0, 255, 0), 2)
-            #         else :
-            #             color = [0,0,255]
-            #             cv2.putText(frame, f'ENEMY  {(confidence*100):.2f}%', (object_xyxy[0], object_xyxy[1] - 20), cv2.FONT_ITALIC, 1, (0, 0, 255), 2)
-            #         cv2.rectangle(frame, (object_xyxy[0], object_xyxy[1]), (object_xyxy[2], object_xyxy[3]), color, 2)
-            
-            
-            # resized = cv2.resize(frame, (int(self.img_size_x/2),int(self.img_size_y)),interpolation=cv2.INTER_AREA)
-            # self.publisher.publish(self.cvbrid.cv2_to_imgmsg(resized))
-            cv2.imshow("Object Detection1", self.color_img)
-            cv2.waitKey(1)  # Adjust the waitKey value for the desired frame display time
+        
+        
+        annotated = result[0].plot()
+        
+        # if len(result[0].boxes.cls) :
+        #     for box in result[0].boxes :
+        #         label = box.cls
+        #         confidence = box.conf.item()
+        #         object_xyxy = np.array(box.xyxy.detach().numpy().tolist()[0], dtype='int')
+        #         color = [255,255,255]
+        #         if label == 0 :
+        #             color =[0,255,0]
+        #             cv2.putText(frame, f'Korea ARMY  {(confidence*100):.2f}%', (object_xyxy[0], object_xyxy[1] - 20),cv2.FONT_ITALIC, 1, (0, 255, 0), 2)
+        #         else :
+        #             color = [0,0,255]
+        #             cv2.putText(frame, f'ENEMY  {(confidence*100):.2f}%', (object_xyxy[0], object_xyxy[1] - 20), cv2.FONT_ITALIC, 1, (0, 0, 255), 2)
+        #         cv2.rectangle(frame, (object_xyxy[0], object_xyxy[1]), (object_xyxy[2], object_xyxy[3]), color, 2)
+        
+        
+        # resized = cv2.resize(frame, (int(self.img_size_x/2),int(self.img_size_y)),interpolation=cv2.INTER_AREA)
+        # self.publisher.publish(self.cvbrid.cv2_to_imgmsg(resized))
+        cv2.imshow("Object Detection1", annotated)
+        cv2.waitKey(1)  # Adjust the waitKey value for the desired frame display time
 
 def main(args=None):
     rclpy.init(args=args)
