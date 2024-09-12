@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
         'main=trash_sort.main:main',
+        'serial_commu=trash_sort.serial_commu:main',
         ],
     },
 )
