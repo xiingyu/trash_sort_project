@@ -12,7 +12,7 @@ class TrashSort(Node):
     def __init__(self):
         super().__init__('trash_sort')
         self.bridge = CvBridge()
-        self.model = YOLO('/home/skh/testing_folder/trash_sort/deneme-3/runs/detect/train3/weights/best.pt')  #lattepanda
+        self.model = YOLO('/home/skh/semi_projects/trash_sort/src/trash_sort_sources/trash_sort-1/runs/detect/train2/weights/best.pt')  #lattepanda
 
         img_qos_profile = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT, history=HistoryPolicy.KEEP_LAST, depth=1  )
         qos_profile = QoSProfile(depth = 10)

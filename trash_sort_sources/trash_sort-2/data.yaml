@@ -1,0 +1,15 @@
+names:
+- bottle
+- can
+- glass
+- trash
+nc: 4
+roboflow:
+  license: CC BY 4.0
+  project: trash_sort-t289i
+  url: https://universe.roboflow.com/embedded-7b0yi/trash_sort-t289i/dataset/1
+  version: 1
+  workspace: embedded-7b0yi
+test: /home/skh/semi_projects/trash_sort/src/trash_sort_sources/trash_sort-2/test.txt
+train: /home/skh/semi_projects/trash_sort/src/trash_sort_sources/trash_sort-2/train.txt
+val: /home/skh/semi_projects/trash_sort/src/trash_sort_sources/trash_sort-2/valid.txt
