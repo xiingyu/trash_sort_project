@@ -24,6 +24,8 @@ class SerialCommu(Node):
 
         self.sonar485_timer = self.create_timer(1/300, self.sonar_detect)
         
+        self.debouncing_time = 2 ##sec
+        
     def sonar_detect(self) :
         msg = String()
         
@@ -42,13 +44,14 @@ class SerialCommu(Node):
             
         
     def send_rs485(self, msg) :
+        
         data = msg.data
         self.ser.write(bytes([0xAF]))
-        time.sleep(1)
+        # time.sleep(1)
         hex = int(data,16)
         # ser.write(hex)
         self.ser.write(hex.to_bytes(1, byteorder='big'))  # 1바이트로 변환 후 전송
-        time.sleep(1)
+        # time.sleep(1)
         
         self.get_logger().info(f'send data   0XAF    0X{data}')
     

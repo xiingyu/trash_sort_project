@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+import time
 
 class TrashSort(Node):
     def __init__(self):
@@ -26,13 +27,13 @@ class TrashSort(Node):
         self.img_size_x = 640
         self.img_size_y = 480
 
-        self.frame_rate = 10
+        self.frame_rate = 5
         ##################################
         
         #### algorithm parameter ####
-        self.glass_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.7)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.95)]]
-        self.plastic_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.4)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.65)]]
-        self.general_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.1)],[int(self.img_size_x * 0.4), int(self.img_size_y * 0.35)]]
+        self.glass_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.7)],[int(self.img_size_x * 0.8), int(self.img_size_y * 0.95)]]
+        self.plastic_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.4)],[int(self.img_size_x * 0.8), int(self.img_size_y * 0.65)]]
+        self.metal_waste_ROI = [[int(self.img_size_x * 0.2), int(self.img_size_y * 0.1)],[int(self.img_size_x * 0.8), int(self.img_size_y * 0.35)]]
         
         # self.postbox_ROI = [[int(self.img_size_x * 0.4), int(self.img_size_y * 0.65)],[int(self.img_size_x * 0.5), int(self.img_size_y * 0.75)]]## xy xy
         
@@ -54,26 +55,30 @@ class TrashSort(Node):
         self.color_img = np.zeros((self.img_size_y, self.img_size_x, 3), dtype=np.uint8)
         
         
-        self.full_flag_general = False
+        self.full_flag_metal = False
         self.full_flag_plastic = False
         self.full_flag_glass = False
-        self.full_cnt_general = 0
+        self.full_cnt_metal = 0
         self.full_cnt_plastic = 0
         self.full_cnt_glass = 0
         
-        self.general_pub_flag = False
+        self.metal_pub_flag = False
         self.plastic_pub_flag = False
         self.glass_pub_flag = False
-        self.general_pub_flag_cnt = 0
+        self.metal_pub_flag_cnt = 0
         self.plastic_pub_flag_cnt = 0
         self.glass_pub_flag_cnt = 0
         
+        self.start_time = 0
+        self.end_time = 0.
         
-        self.get_logger().info(f"General waste ROI: {self.general_waste_ROI}")
+        
+        self.get_logger().info(f"metal waste ROI: {self.metal_waste_ROI}")
         self.get_logger().info(f"Plastic waste ROI: {self.plastic_waste_ROI}")
         self.get_logger().info(f"Glass waste ROI: {self.glass_waste_ROI}")
 
     def img_cap(self) :
+        self.start_time = time.time()
         ret0, frame = self.cap0.read()
         
         if not (ret0) :
@@ -82,11 +87,14 @@ class TrashSort(Node):
         else :
             self.color_img = frame
             
+            self.end_time = time.time()
+            print(self.end_time - self.start_time)
+            
     def flag_falser(self) :
-        if self.full_flag_general == True :
-            self.full_cnt_general += 1
-            if self.full_cnt_general >= 10 :
-                self.full_flag_general = False
+        if self.full_flag_metal == True :
+            self.full_cnt_metal += 1
+            if self.full_cnt_metal >= 10 :
+                self.full_flag_metal = False
                 
         elif self.full_flag_plastic == True :
             self.full_cnt_plastic += 1
@@ -103,8 +111,8 @@ class TrashSort(Node):
             
     def waste_full_checker(self , msg) :
         if msg.data == "ca" :
-            self.full_flag_general = True
-            self.full_cnt_general = 0
+            self.full_flag_metal = True
+            self.full_cnt_metal = 0
         elif msg.data == "cb" :
             self.full_flag_plastic = True
             self.full_cnt_plastic = 0
@@ -113,14 +121,14 @@ class TrashSort(Node):
             self.full_cnt_glass = 0
             
     def pub_flag_checker(self) :
-        self.general_pub_flag = False
+        self.metal_pub_flag = False
         self.plastic_pub_flag = False
         self.glass_pub_flag = False
         
-        if self.general_pub_flag == True :
-            self.general_pub_flag_cnt += 1
-            if self.general_pub_flag_cnt >= 5 :
-                self.general_pub_flag = False
+        if self.metal_pub_flag == True :
+            self.metal_pub_flag_cnt += 1
+            if self.metal_pub_flag_cnt >= 5 :
+                self.metal_pub_flag = False
         
         
         if self.plastic_pub_flag == True :
@@ -134,10 +142,10 @@ class TrashSort(Node):
             if self.glass_pub_flag_cnt >= 5 :
                 self.glass_pub_flag = False
         
-        # self.general_pub_flag = False
+        # self.metal_pub_flag = False
         # self.plastic_pub_flag = False
         # self.glass_pub_flag = False
-        # self.general_pub_flag_cnt = 0
+        # self.metal_pub_flag_cnt = 0
         # self.plastic_pub_flag_cnt = 0
         # self.glass_pub_flag_cnt = 0
         
@@ -147,20 +155,20 @@ class TrashSort(Node):
         
         result = self.model.predict(self.color_img, conf = 0.4, verbose=False)
         
-        cv2.rectangle(self.color_img, (int(self.general_waste_ROI[0][0]),int(self.general_waste_ROI[0][1])), ((int(self.general_waste_ROI[1][0]), int(self.general_waste_ROI[1][1]))), (255,0,0),2)
-        cv2.putText(self.color_img, "general_waste",(int(self.general_waste_ROI[0][0]), int(self.general_waste_ROI[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        cv2.rectangle(self.color_img, (int(self.metal_waste_ROI[0][0]),int(self.metal_waste_ROI[0][1])), ((int(self.metal_waste_ROI[1][0]), int(self.metal_waste_ROI[1][1]))), (255,0,0),2)
+        cv2.putText(self.color_img, "metal_waste",(int(self.metal_waste_ROI[0][0]), int(self.metal_waste_ROI[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         
         
         cv2.rectangle(self.color_img, (int(self.plastic_waste_ROI[0][0]),int(self.plastic_waste_ROI[0][1])), ((int(self.plastic_waste_ROI[1][0]), int(self.plastic_waste_ROI[1][1]))), (0,255,0),2)
         cv2.putText(self.color_img, "plastic_waste", (int(self.plastic_waste_ROI[0][0]), int(self.plastic_waste_ROI[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
-        cv2.rectangle(self.color_img, (int(self.glass_waste_ROI[0][0]),int(self.glass_waste_ROI[0][1])), ((int(self.glass_waste_ROI[1][0]), int(self.glass_waste_ROI[1][1]))), (0,0,255),2)
-        cv2.putText(self.color_img, "glass_waste", (int(self.glass_waste_ROI[0][0]), int(self.glass_waste_ROI[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        # cv2.rectangle(self.color_img, (int(self.glass_waste_ROI[0][0]),int(self.glass_waste_ROI[0][1])), ((int(self.glass_waste_ROI[1][0]), int(self.glass_waste_ROI[1][1]))), (0,0,255),2)
+        # cv2.putText(self.color_img, "glass_waste", (int(self.glass_waste_ROI[0][0]), int(self.glass_waste_ROI[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         
         
         
-        if self.full_flag_general == True :
-            cv2.putText(self.color_img, "general_waste is full", (int(self.general_waste_ROI[1][0]) + 10, int(self.general_waste_ROI[1][1])),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)  # 빨간색 텍스트 추가
+        if self.full_flag_metal == True :
+            cv2.putText(self.color_img, "metal_waste is full", (int(self.metal_waste_ROI[1][0]) + 10, int(self.metal_waste_ROI[1][1])),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)  # 빨간색 텍스트 추가
         if self.full_flag_plastic == True :
             cv2.putText(self.color_img, "plastic_waste is full", (int(self.plastic_waste_ROI[1][0]) + 10, int(self.plastic_waste_ROI[1][1])),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)  # 빨간색 텍스트 추가
         if self.full_flag_glass == True :
@@ -185,18 +193,19 @@ class TrashSort(Node):
                 # if trash_locate.shape[0] >= 2:  # 최소한 x와 y 좌표가 있는지 확인
                 # 객체의 (x, y) 좌표 가져오기
                 object_x, object_y = trash_locate[0][0], trash_locate[0][1]
-                if class_id == 1:
-                    if self.glass_waste_ROI[0][0] <= object_x <= self.glass_waste_ROI[1][0] and self.glass_waste_ROI[0][1] <= object_y <= self.glass_waste_ROI[1][1]:
-                        msg = String()
-                        msg.data = "aa"
-                        if self.glass_pub_flag == False :
-                            self.controll_publisher.publish(msg)
-                            self.glass_pub_flag = True
-                            self.get_logger().info("Glass detected in ROI, published 'aa'")
-                        else :
-                            self.get_logger().info("waiting")
+                if class_id == 2:
+                    pass
+                    # if self.glass_waste_ROI[0][0] <= object_x <= self.glass_waste_ROI[1][0] and self.glass_waste_ROI[0][1] <= object_y <= self.glass_waste_ROI[1][1]:
+                    #     msg = String()
+                    #     msg.data = "aa"
+                    #     if self.glass_pub_flag == False :
+                    #         self.controll_publisher.publish(msg)
+                    #         self.glass_pub_flag = True
+                    #         self.get_logger().info("Glass detected in ROI, published 'aa'")
+                    #     else :
+                    #         self.get_logger().info("waiting")
 
-                if class_id == 3:
+                if class_id == 0:
                     if self.plastic_waste_ROI[0][0] <= object_x <= self.plastic_waste_ROI[1][0] and self.plastic_waste_ROI[0][1] <= object_y <= self.plastic_waste_ROI[1][1]:
                         msg = String()
                         msg.data = "ab"
@@ -205,12 +214,14 @@ class TrashSort(Node):
                             self.get_logger().info("Plastic detected in ROI, published 'ab'")
                         else :
                             self.get_logger().info("waiting")
+                        
+                        # time.sleep(1)
 
-                if class_id == 2:
-                    if self.general_waste_ROI[0][0] <= object_x <= self.general_waste_ROI[1][0] and self.general_waste_ROI[0][1] <= object_y <= self.general_waste_ROI[1][1]:
+                if class_id == 1:
+                    if self.metal_waste_ROI[0][0] <= object_x <= self.metal_waste_ROI[1][0] and self.metal_waste_ROI[0][1] <= object_y <= self.metal_waste_ROI[1][1]:
                         msg = String()
                         msg.data = "ac"
-                        if self.general_pub_flag == False :
+                        if self.metal_pub_flag == False :
                             self.controll_publisher.publish(msg)
                             self.get_logger().info("Metal detected in ROI, published 'ac'")
                         else :
